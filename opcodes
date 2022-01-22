@@ -1,0 +1,26 @@
+ADD	 M	18	A = A + M
+AND	 M	40	A = A AND M
+COMP M	28	compares A and M
+DIV	 M	24	A = A / M
+J	 M	3C	PC = M
+JEQ	 M	30	if CC set to =, PC = M
+JGT	 M	34	if CC set to >, PC = M
+JLT	 M	38	if CC set to <, PC = M
+JSUB M	48	L = PC ; PC = M
+LDA	 M	00	A = M
+LDCH M	50	A[RMB] = M[RMB]
+LDL	 M	08	L = M
+LDX	 M	04	X = M
+MUL	 M	20	A = A * M
+OR	 M	44	A = A OR M
+RD	 M	D8	A[RMB] = data specified by M[RMB]
+RSUB 	4C	PC = L
+STA	 M	0C	M = A
+STCH M	54	M[RMB] = A[RMB]
+STL	 M	14	M = L
+STSW M	E8	M = SW
+STX	 M	10	M = X
+SUB	 M	1C	A = A – M
+TD	 M	E0	test device specified by M
+TIX	 M	2C	X = X + 1 ; compare X with M
+WD	 M	DC	device specified by M[RMB] = A[RMB]
