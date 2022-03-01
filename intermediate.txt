@@ -1,0 +1,18 @@
+       # program to compute
+       # ALPHA = 4 * BETA - 9 + DELTA
+       test   START  1000
+01000         LDA    BETA
+01003         MUL    FOUR
+01006         SUB    NINE
+01009         ADD    DELTA
+0100c         STA    ALPHA
+0100f  FOUR   WORD   4
+01012  NINE   WORD   9
+       # this is a comment
+01015  ALPHA  RESW   1
+01018  BETA   RESW   1
+0101b  DELTA  RESW   1
+0101e  GAMMA  RESW   5
+0102d  TST_S  BYTE   C'Test String'
+01038         END
+

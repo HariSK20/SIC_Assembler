@@ -1,10 +1,17 @@
-copy  START 1000
-_     LDA   ALPHA
-_     ADD   ONE
-_     SUB   TWO
-_     STA   BETA
-ALHPA BYTE  C'KLNCE'
-ONE   RESB  2
-TWO   WORD  5
-BETA  RESW  1
--     END
+# program to compute
+# ALPHA = 4 * BETA - 9 + DELTA
+test   START  1000
+       LDA    BETA
+       MUL    FOUR
+       SUB    NINE
+       ADD    DELTA
+       STA    ALPHA
+FOUR   WORD   4
+NINE   WORD   9
+# this is a comment
+ALPHA  RESW   1
+BETA   RESW   1
+DELTA  RESW   1
+GAMMA  RESW   5
+TST_S  BYTE   C'Test String'
+       END
