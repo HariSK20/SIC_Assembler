@@ -14,6 +14,7 @@
 #define OPERAND_HEX_SIZE 4
 #define INSTRUCTION_SIZE_BYTES 3
 #define TEXT_RECORD_COUNT 5
+#define DESCRETE_REALLOC_SIZE 5
 int u_errno;
 
 static char symbol_file_name[] = "symbols.txt";
@@ -21,6 +22,7 @@ static char intermediate_file_name[] = "intermediate.txt";
 static char output_file_name[] = "output.txt";
 static char absolute_loaded_mem_file_name[] = "absolute_loaded_mem.txt";
 static char relocated_loaded_mem_file_name[] = "relocated_loaded_mem.txt";
+static char macro_processed_file_name[] = "macro_processed_file.txt";
 
 
 typedef struct List

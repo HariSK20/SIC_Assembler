@@ -18,6 +18,9 @@ absolute: loader_absolute.c common.c
 relocating: loader_relocating.c common.c 
 	${CC} ${DEBUG_FLAG} loader_relocating.c common.c ${FLAGS} loader_relocating.out
 
+macro_processor: macro_proc.c common.c 
+	${CC} ${DEBUG_FLAG} macro_proc.c common.c -o macro_processor.out
+
 test: test.c common.c
 	${CC} ${DEBUG_FLAG} test.c common.c ${FLAGS} test.out
 
