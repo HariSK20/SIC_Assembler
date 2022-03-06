@@ -5,16 +5,6 @@
 
 #include "S1934_sic_assembler.h"
 
-typedef struct Table
-{
-	char name[8];
-	List *arg_tab;
-	char **definition;
-	int number_of_lines;
-	int no_of_arguments;
-	struct Table *next;
-}Table;
-
 /*
 	states:
 		0 : initial, Haven't read start yet
@@ -22,89 +12,12 @@ typedef struct Table
 		2 : Read END of program
 		3 : Error
 */
-void freeTable(Table *table)
-{
-	Table *temp = table;
-	while(temp != NULL)
-	{
-		for(int i = 0; i < temp->number_of_lines; i++)
-		{
-			if(temp->definition[i] != NULL)
-				free(temp->definition[i]);
-		}
-		free(temp->definition);
-		free(temp->arg_tab);
-		table = temp;
-		temp = temp->next;
-		free(table);
-	}
-}
-
-Table* insertIntoTable(Table *list, char **s, int n)
-{
-	/*
-		Takes nametab, the tokens and number of tokens as argument
-		returns list of macronames
-		the newest one is always at the top
-	*/
-	Table *temp = NULL;
-	temp = (Table *)malloc(sizeof(Table));
-	if(temp == NULL)
-	{
-		u_errno = 1;
-		printf(" >! Error in insertIntoTable\n");
-		printf(" >! Unable to allocate memory!\n");
-		freeTable(list);
-		return(NULL);
-		// return(list);
-	}
-	temp->definition = NULL;
-	temp->arg_tab = NULL;
-	temp->no_of_arguments = n - 2;
-	if(temp->no_of_arguments > 0)
-	{
-		temp->arg_tab = (List *)calloc(temp->no_of_arguments, sizeof(List));
-		for(int i = 0; i < temp->no_of_arguments; i++)
-		{
-			strcpy(temp->arg_tab[i].symbol, s[2+i]);
-			temp->arg_tab[i].next = NULL;
-		}
-	}
-	strcpy(temp->name, s[0]);
-	temp->number_of_lines = 0;
-	temp->no_of_arguments = 0;
-	temp->next = NULL;
-	
-	if(list == NULL)
-		list = temp;
-	else
-	{
-		temp->next = list;
-		list = temp;
-	}
-
-	return(list);
-}
-
-Table* searchTable(Table *list, char *s)
-{
-	Table *temp = list;
-	while(temp != NULL)
-	{
-		if(strcmp(temp->name, s) == 0)
-		{
-			return(temp);
-		}
-		temp = temp->next;
-	}
-	return(NULL);
-}
-
 
 
 int main(int argc, char **argv)
 {
 	printf(" Macro Processor\n");
+	printf(" Currently does not support nested macro definition\n");
 
 	if(argc != 2)
 	{
@@ -114,9 +27,9 @@ int main(int argc, char **argv)
 		return(0);
 	}
 	int number_of_macros = 0;
-	int n, i, j, w_flag = 0, state = 0, max_length, flag, line_counter = 0;
+	int n, i, j, w_flag = 0, state = 0, max_length, flag, line_counter = 0, output_line_counter = 0;
 	char delim = ' ', *search_string;
-	FILE *input_file, *macro_processed_file, *arg_tab, *def_tab, *name_tab;
+	FILE *input_file, *macro_processed_file, *arg_tab_file, *def_tab_file, *name_tab_file;
 	char *line = NULL;
 	char **tokens;
 	unsigned long len = 0, r, locctr = 0, prev_locctr = 0, starting_address = 0;
@@ -140,6 +53,44 @@ int main(int argc, char **argv)
 		remove(macro_processed_file_name);		
 	}
 
+	name_tab_file = fopen(macro_name_file_name, "w");
+	if(name_tab_file == NULL)
+	{
+		state = 3;
+		printf(" >! Unable to create output file!\n");
+		perror(" >! Error\n");
+		fclose(name_tab_file);
+		fclose(macro_processed_file);
+		fclose(input_file);
+		remove(macro_processed_file_name);		
+	}
+
+	arg_tab_file = fopen(macro_argument_file_name, "w");
+	if(macro_processed_file == NULL)
+	{
+		state = 3;
+		printf(" >! Unable to create output file!\n");
+		perror(" >! Error\n");
+		fclose(arg_tab_file);
+		fclose(name_tab_file);
+		fclose(macro_processed_file);
+		fclose(input_file);
+		remove(macro_processed_file_name);		
+	}
+
+	def_tab_file = fopen(macro_definition_file_name, "w");
+	if(macro_processed_file == NULL)
+	{
+		state = 3;
+		printf(" >! Unable to create output file!\n");
+		perror(" >! Error\n");
+		fclose(def_tab_file);
+		fclose(arg_tab_file);
+		fclose(name_tab_file);
+		fclose(macro_processed_file);
+		fclose(input_file);
+		remove(macro_processed_file_name);		
+	}
 	locctr = 0;
 	prev_locctr = 0;
 	printf(" > Reading %s\n", argv[1]);
@@ -161,6 +112,14 @@ int main(int argc, char **argv)
 			w_flag = 1;
 		if(tokens != NULL)
 		{
+			/*
+				Checking if a valid opcode exists
+				if n = 4 => opcode in 3
+				if n = 3 => opcode in 2 or 3
+				if n = 2 => opcode in 1 or 2
+				if n = 1 => it is opcode
+			*/
+
 			if(state == 0 && line[0] != '#')
 			{
 				// If First line is not a comment
@@ -173,17 +132,22 @@ int main(int argc, char **argv)
 					locctr = starting_address;
 					prev_locctr = locctr;
 				}
-				w_flag = 1;
+				// w_flag = 1;
 			}
 			else if(state > 0 && tokens[0][0] != '#') // skip comment line
 			{
 				// Checking Label Field
-				if(flag > 0)
+				// printTable(macro_name_tab);
+				if(n > 0)
 				{
+					int run_stat = 0;
 					if(n > 1)
 					{
+						// printTokens(tokens, n);
 						if(strcmp(tokens[1], "MACRO") == 0)
 						{
+							run_stat ++;
+							// DEFINE MACRO
 							if(searchTable(macro_name_tab, tokens[0]) != NULL)
 							{
 								state = 3;
@@ -192,105 +156,238 @@ int main(int argc, char **argv)
 							}
 							else
 							{
+								// New macro found
 								macro_name_tab = insertIntoTable(macro_name_tab, tokens, n);
+								// printTokens(tokens, n);
 								if(macro_name_tab == NULL)
 								{
 									state = 3;
 									printf(" >! ERROR! exiting because of line %d\n", line_counter);
 									break;
 								}
+								// Inserting macro into def_tab
+								fprintf(def_tab_file, "%s", line);
+								fprintf(name_tab_file, "%s\n", macro_name_tab->name);
+								int prev_line_counter = line_counter;
+								// printf(" !!! %d %s\n", macro_name_tab->no_of_arguments, macro_name_tab->arg_tab[0].symbol);
+								for( i = 0; i < macro_name_tab->no_of_arguments; i++)
+								{
+									// printf("! %s \n", macro_name_tab->arg_tab[i].symbol);
+									fprintf(arg_tab_file, "%s\n", macro_name_tab->arg_tab[i].symbol);
+								}
 
+								i = 0;
+								while((r = getline(&line, &len, input_file)) != -1)
+								{
+									n = 0;
+									max_length = MAX_COLUMN_SPACE_SEPARATION;
+									flag = 3;
+									tokens = splitString(line, delim, &n, &max_length, &flag);
+									if(n > 0)
+									{
+										if(strcmp(tokens[1], "MEND") != 0)
+										{
+											// Increase the size of def_tab when needed
+											// printf(" >> %d ", i);
+											if(i % DISCRETE_REALLOC_SIZE == 0)
+											{
+												if(macro_name_tab->number_of_lines == 0)
+												{
+													macro_name_tab->definition = (char **)calloc(DISCRETE_REALLOC_SIZE, sizeof(char *));
+													if(macro_name_tab->definition == NULL)
+													{
+														printf(" >! Error while trying to create def_tab\n");
+														printf(" >! Unable to allocate memory!\n");
+														state = 3;
+														break;
+													}
+												}
+												else 
+												{
+													// printf(">> ??%ld\n", (macro_name_tab->number_of_lines + DISCRETE_REALLOC_SIZE)*sizeof(char *));
+													macro_name_tab->definition = (char **)realloc(macro_name_tab->definition, (macro_name_tab->number_of_lines + DISCRETE_REALLOC_SIZE)*sizeof(char *) );
+													if(macro_name_tab->definition == NULL)
+													{
+														printf(" >! Error while trying to increase def_tab\n");
+														printf(" >! Unable to allocate memory!\n");
+														state = 3;
+														break;
+													}
+												}
+												// Initialize each new array
+												for(j = macro_name_tab->number_of_lines; j < macro_name_tab->number_of_lines + DISCRETE_REALLOC_SIZE; j++)
+												{
+													macro_name_tab->definition[j] = (char *)calloc(MAX_LINE_LENGTH, sizeof(char));
+													if(macro_name_tab->definition == NULL)
+													{
+														printf(" >! Error while trying to allocate def_tab[i]\n");
+														printf(" >! Unable to allocate memory!\n");
+														state = 3;
+														break;
+													}
+												}
+												if(state == 3)
+													break;
+											}
+											// Save definition line
+											fprintf(def_tab_file, "%s", line);
+											sprintf(macro_name_tab->definition[i], "%s", line);
+											i++;
+											macro_name_tab->number_of_lines = i;
+										}
+										else 
+										{
+											if(strcmp(tokens[0], macro_name_tab->name) != 0)
+											{
+												printf(" >! Improper end of Macro %s at line %d\n", macro_name_tab->name, line_counter);
+												state = 3;
+												freeTokens(tokens, n);
+												tokens = NULL;
+												break;
+											}
+											fprintf(def_tab_file, "%s", line);
+											w_flag = 1;
+											line_counter++;
+											break;
+										}
+									}
+									if(tokens != NULL)
+									{
+										freeTokens(tokens, n);
+										tokens = NULL;
+									}
+									line_counter++;
+								}
+								if(state == 3)
+								{
+									if(tokens != NULL)
+									{
+										freeTokens(tokens, n);
+										tokens = NULL;
+									}
+									break;
+								}
+
+								locctr += 3*(line_counter - prev_line_counter);
+								line_counter = prev_line_counter - 1;
 							}
 						}
 					}
+					else if(n > 0)
+					{
+						// printf(" Here");
+						if(!strcmp(tokens[0], "END"))
+						{
+							run_stat++;
+							// printf(" END reached\n");
+							// fprintf(symtab_file, "%5s  %04lx\n", tokens[0], locctr);
+							state = 2;
+
+						}
+					}
+					if(run_stat == 0)
+					{
+						// Check if a macro was called
+						// printTokens(tokens, n);
+						for( i = 0; i < n; i++)
+						{
+							Table *temp = searchTable(macro_name_tab, tokens[i]);
+							if(temp != NULL)
+							{
+								// printf(" >%d> %s %d \n", line_counter, temp->name, i);
+								// Macro invocation found
+								// EXPAND
+								w_flag = 1;
+								for(j = 0; j < temp->number_of_lines; j++)
+								{
+									if(temp->no_of_arguments > 0)
+									{
+										// Split definition line to check for arguments
+										int n2 = 0, max_length2 = MAX_COLUMN_SPACE_SEPARATION, flag2 = 3; 
+										char **tokens2;
+										tokens2 = splitString(temp->definition[j], delim, &n2, &max_length2, &flag2);
+										if(i < n)
+										{
+											if(n - i - 1 != temp->no_of_arguments)
+											{
+												state = 3;
+												freeTokens(tokens2, n2);
+												tokens2 = NULL;
+												printf(" >! Imporoper call of macro %s at line %d\n", temp->name, line_counter);
+												break;
+											}
+											// Arguments were specified
+											else 
+											{
+												for(int k = 0; k < n2; k++)
+												{
+													if(tokens2[k][0] == '&')
+													{
+														// printf(" >> 243");
+														// linear search argument
+														int l;
+														for(l = 0; l < temp->no_of_arguments; l++)
+														{
+															// printf(" |%s|, |%s|", temp->arg_tab[l].symbol, tokens2[k]);
+															if(strcmp(tokens2[k], temp->arg_tab[l].symbol ) == 0)
+															{	
+																// printf("yes\n");
+																strcpy(tokens2[k], tokens[i+1 + l]);
+																break;
+															}
+														}
+													}
+												}
+											}
+										}
+										if(flag2 == 0)
+										{
+											for(int k = 0; k < MAX_LABEL_SIZE; k++)
+												fprintf(macro_processed_file, " ");
+											fprintf(macro_processed_file, "  ");	
+										}
+										for(int k = 0; k < n2; k++)
+										{
+											fprintf(macro_processed_file, "%.*s  ", MAX_LABEL_SIZE, tokens2[k]);
+											for(int _ = 0; _ < MAX_COLUMN_SPACE_SEPARATION; _++)
+												fprintf(macro_processed_file, " ");
+
+										}
+										fprintf(macro_processed_file, "\n");
+										freeTokens(tokens2, n2);
+										tokens2 = NULL;
+									}
+									else
+										fprintf(macro_processed_file, "%s\n", temp->definition[j]);
+									output_line_counter++;
+								}
+								if(state == 3)
+									break;
+							}
+							// else 
+							// {
+							// 	printf(" %s Not found\n", tokens[i]);
+							// }
+						}
+						if(state == 3)
+							break;
+					}
 
 				}
-				/*
-					Checking if a valid opcode exists
-					if n = 4 => opcode in 3
-					if n = 3 => opcode in 2 or 3
-					if n = 2 => opcode in 1 or 2
-					if n = 1 => it is opcode
-				*/
-				// int op_pos;
-				// // printf("flag %d, state %d\n", flag, state);
-				// op_pos = findOpcode(tokens[flag]);
-				// if(op_pos > -1)
-				// {
-				// 	locctr += INSTRUCTION_SIZE_BYTES;
-				// 	// printf(" >%d Opcode found col %d\n", line_counter, flag);
-				// }
-				// else if(op_pos == -2)
-				// {
-				// 	printf(" >%d! ", line_counter);
-				// 	state = 3;
-				// 	break;
-				// }
-				// else
-				// {
-				// 	// No SIC opcode found
-				// 	if(n == 3)
-				// 	{
-				// 		if(!strcmp(tokens[1], "WORD"))
-				// 		{
-				// 			locctr += 3;
-				// 		}
-				// 		else if(!strcmp(tokens[1], "RESW"))
-				// 		{
-				// 			locctr += 3*(atoi(tokens[2]));
-				// 		}
-				// 		else if(!strcmp(tokens[1], "BYTE"))
-				// 		{
-				// 			// printf("tok= %s\n", tokens[2]);
-				// 			int len = getStringLength(tokens[2]);
-				// 			if(len < 1)
-				// 			{
-				// 				printf("%d\n", len);
-				// 				printf(" >! Error at %d! Improper declaration of string\n", line_counter);
-				// 				state = 3;
-				// 				break;
-				// 			}
-				// 			locctr += len;
-				// 		}
-				// 		else if(!strcmp(tokens[1], "RESB"))
-				// 		{
-				// 			locctr += atoi(tokens[2]);
-				// 		}
-				// 		else
-				// 		{
-				// 			state = 3;
-				// 			printf(" >! No Valid Opcode Found on line %d!\n", line_counter);
-				// 			break;
-				// 		}
-				// 	}
-				// 	else if(n == 1)
-				// 	{
-				// 		// printf("here tokens[0] = \"%s\"", tokens[0]);
-				// 		// printf(" %d\n", tokens[0][3]);
-				// 		if(!strcmp(tokens[0], "END"))
-				// 		{
-				// 			// printf(" END reached\n");
-				// 			state = 2;
-				// 		}
-				// 	}
-				// 	else
-				// 	{
-				// 		state = 3;
-				// 		printf(" >! No Valid Opcode Found on line %d!\n", line_counter);
-				// 		break;						
-				// 	}
-				// }
 			}
 		}
 		// printf(" | %lu | %s \n", prev_locctr, line);
 		if(state == 4 || w_flag == 1)
 		{
-			fprintf(macro_processed_file, "       %s", line);
+			// fprintf(macro_processed_file, "%s", line);
 			// state = 1;
 			w_flag = 0;
 		}
-		else
+		else 
+		{
 			fprintf(macro_processed_file, "%s", line);
+			output_line_counter++;
+		}
 		freeTokens(tokens, n);
 		tokens = NULL;
 		free(line);
@@ -301,6 +398,9 @@ int main(int argc, char **argv)
 	fprintf(macro_processed_file, "\n");
 	
 	// close files
+	fclose(def_tab_file);
+	fclose(arg_tab_file);
+	fclose(name_tab_file);
 	fclose(macro_processed_file);
 	fclose(input_file);
 
@@ -310,7 +410,7 @@ int main(int argc, char **argv)
 	else
 	{
 		printf(" > Success!\n");
-		printf(" > Program length = %lu bytes\n", (locctr - starting_address));
+		printf(" > Program length = %d lines\n", output_line_counter);
 		printf(" > Output written to ./%s\n", macro_processed_file_name);
 	}
 

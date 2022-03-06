@@ -14,7 +14,8 @@
 #define OPERAND_HEX_SIZE 4
 #define INSTRUCTION_SIZE_BYTES 3
 #define TEXT_RECORD_COUNT 5
-#define DESCRETE_REALLOC_SIZE 5
+#define DISCRETE_REALLOC_SIZE 5
+#define MAX_LINE_LENGTH 26
 int u_errno;
 
 static char symbol_file_name[] = "symbols.txt";
@@ -23,6 +24,9 @@ static char output_file_name[] = "output.txt";
 static char absolute_loaded_mem_file_name[] = "absolute_loaded_mem.txt";
 static char relocated_loaded_mem_file_name[] = "relocated_loaded_mem.txt";
 static char macro_processed_file_name[] = "macro_processed_file.txt";
+static char macro_definition_file_name[] = "def_tab.txt";
+static char macro_argument_file_name[] = "arg_tab.txt";
+static char macro_name_file_name[] = "nam_tab.txt";
 
 
 typedef struct List
@@ -32,6 +36,16 @@ typedef struct List
 	struct List* next;
 	/* data */
 }List;
+
+typedef struct Table
+{
+	char name[8];
+	List *arg_tab;
+	char **definition;
+	int number_of_lines;
+	int no_of_arguments;
+	struct Table *next;
+}Table;
 
 List *op_tab;
 
@@ -56,6 +70,14 @@ int searchTokens(char **tokens, int no_of_tokens, char *str);
 int findOpcode(char *string);
 
 int getStringLength(char *str);
+
+void printTable(Table *table);
+
+void freeTable(Table *table);
+
+Table* insertIntoTable(Table *list, char **s, int n);
+
+Table* searchTable(Table *list, char *s);
 
 #endif
 

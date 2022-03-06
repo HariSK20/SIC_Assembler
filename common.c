@@ -424,3 +424,102 @@ int getStringLength(char *str)
 	}
 	return(n);
 }
+
+
+
+void printTable(Table *table)
+{
+	Table *temp = table;
+	printf(" >! Defined macros are : \n");
+	while(temp != NULL)
+	{
+		printf(" %s ", temp->name);
+		temp = temp->next;
+	}
+	printf("\n");
+}
+
+
+void freeTable(Table *table)
+{
+	Table *temp = table;
+	while(temp != NULL)
+	{
+		for(int i = 0; i < temp->number_of_lines; i++)
+		{
+			if(temp->definition[i] != NULL)
+				free(temp->definition[i]);
+		}
+		free(temp->definition);
+		free(temp->arg_tab);
+		table = temp;
+		temp = temp->next;
+		free(table);
+	}
+}
+
+
+Table* insertIntoTable(Table *list, char **s, int n)
+{
+	/*
+		Takes nametab, the tokens and number of tokens as argument
+		returns list of macronames
+		the newest one is always at the top
+	*/
+	Table *temp = NULL;
+	temp = (Table *)malloc(sizeof(Table));
+	if(temp == NULL)
+	{
+		u_errno = 1;
+		printf(" >! Error in insertIntoTable\n");
+		printf(" >! Unable to allocate memory!\n");
+		freeTable(list);
+		return(NULL);
+		// return(list);
+	}
+	temp->number_of_lines = 0;
+	temp->no_of_arguments = 0;
+	temp->definition = NULL;
+	temp->arg_tab = NULL;
+	temp->no_of_arguments = n - 2;
+	// printf(" ^^ %d \n", temp->no_of_arguments);
+	if(temp->no_of_arguments > 0)
+	{
+		temp->arg_tab = (List *)calloc(temp->no_of_arguments, sizeof(List));
+		for(int i = 0; i < temp->no_of_arguments; i++)
+		{
+			// printf("!! %s\n", s[2+i]);
+			strcpy(temp->arg_tab[i].symbol, s[2+i]);
+			temp->arg_tab[i].code = i;
+			temp->arg_tab[i].next = NULL;
+		}
+	}
+	strcpy(temp->name, s[0]);
+	temp->next = NULL;
+	
+	if(list == NULL)
+		list = temp;
+	else
+	{
+		temp->next = list;
+		list = temp;
+	}
+
+	return(list);
+}
+
+
+Table* searchTable(Table *list, char *s)
+{
+	Table *temp = list;
+	while(temp != NULL)
+	{
+		// printf(" %s, ", temp->name);
+		if(strcmp(temp->name, s) == 0)
+		{
+			return(temp);
+		}
+		temp = temp->next;
+	}
+	return(NULL);
+}
